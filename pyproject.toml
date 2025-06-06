@@ -1,0 +1,12 @@
+[project]
+name = "PPO"
+version = "0.1.0"
+description = "Your project description"
+authors = ["Your Name <your_email@example.com>"]
+license = "MIT"
+dependencies = [
+]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
