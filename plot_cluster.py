@@ -73,7 +73,11 @@ def plot_cluster_grid_highlight(
     unique_codes = np.unique(img[~np.isnan(img)]).astype(int)
     legend_labels = [str(code) for code in unique_codes]
 
-    highlight_set = set(highlight_clusters)
+    # Only highlight clusters if highlight_clusters is not None
+    if highlight_clusters is not None:
+        highlight_set = set(highlight_clusters)
+    else:
+        highlight_set = set()
     code_to_idx = {code: i for i, code in enumerate(unique_codes)}
     nan_idx = len(unique_codes)
 
@@ -95,7 +99,7 @@ def plot_cluster_grid_highlight(
             idx = data[(data['x'] == x) & (data['y'] == y)].index
             if len(idx) > 0 and idx[0] in sel_idx:
                 color[-1] = 1.0
-            elif code in highlight_set:
+            elif highlight_set and code in highlight_set:
                 color[-1] = 0.5
             else:
                 color[-1] = 0.1
@@ -133,6 +137,7 @@ def plot_cluster_grid_highlight(
     plt.tight_layout()
     plt.subplots_adjust(top=0.88)
     plt.show()
+
 
 def plot_stratum_grid_highlight(
     data, highlight_clusters, title, selected_points=None
@@ -176,9 +181,9 @@ def plot_stratum_grid_highlight(
             if len(idx) > 0 and idx[0] in sel_idx:
                 color[-1] = 1.0
             elif cluster in highlight_set:
-                color[-1] = 0.5
+                color[-1] = 0.7
             else:
-                color[-1] = 0.1
+                color[-1] = 0.3
             rgba_img[i, j] = color
 
     plt.figure(figsize=(10, 5))
