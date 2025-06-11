@@ -11,7 +11,7 @@ from plot_cluster import (
 
 #Constants
 seed = 1998 #my UKČO
-percentage_white_pixels = 0
+percentage_white_pixels = 0.05  # 5% of white pixels
 N_clusters = 20
 N_strata = 5
 random.seed(seed)
@@ -53,8 +53,8 @@ for cluster, stratum in clusters_to_stratum.items():
 # # A) Clusters selected with probabilities proportional to size, with replacement
 events = np.arange(N_clusters)
 probabilities = data['cluster'].value_counts(normalize=True).sort_index().values
-n_psu_samples = 2
-n_ssu_samples = 2
+n_psu_samples = 10
+n_ssu_samples = 5
 selected_clusters = np.random.choice(events, size=n_psu_samples, replace=True, p=probabilities)
 plot_cluster_grid_highlight(data=data, plot_variable='cluster', highlight_clusters=selected_clusters, title='Soil Data Clustering (Strata)', )
 
@@ -117,34 +117,48 @@ class CalculationsDetails():
         n = len(values)
         return (1/(n - 1)) * squared_diff_sum
 
+    def get_sample_total_stratified(self):
+        return sum(x.get_sample_total_srswor() for x in self.children.values())
+
+    def get_sample_mean_stratified(self):
+        return self.get_sample_total_stratified()/ self.total_secondary_units
+
+    def get_sample_total_variance_stratified(self):
+        return sum(x.get_sample_total_variance_srswor() for x in self.children.values())
+
+    def get_sample_mean_variance_stratified(self):
+        return self.get_sample_total_variance_stratified() / (self.total_secondary_units**2)
 
 
 
 
 
-# A = CalculationsDetails()
-# A.total_secondary_units = len(data)
-# A.sample_primary_units = n_psu_samples
-# A.total_primary_units = N_clusters
-#
-# for cluster in selected_clusters:
-#     A.children[cluster] = CalculationsDetails()
-#     A.children[cluster].total_secondary_units = len(clusters_to_datapoints[cluster])
-#     A.children[cluster].sample_secondary_units = n_psu_samples
-#     ssu_samples_per_cluster = np.random.choice(clusters_to_datapoints[cluster], size=n_ssu_samples, replace=False)
-#     A.children[cluster].initialize_with_data_points(ssu_samples_per_cluster)
-#
-# plot_cluster_grid_highlight(data=data, plot_variable='cluster', highlight_clusters=selected_clusters, title='Soil Data Clustering (Strata)', selected_points=A.get_all_primary_units())
-# print(A.get_sample_mean(), A.get_sample_variance())
-#
-# ((A.children[11].get_sample_total()+A.children[15].get_sample_total())/2*20)/ data.shape[0]
-# A.get_sample_mean_srswor()
-# A.children[11].get_partial_si2_inside_sum()
-# A.get_sample_variance_srswor()
-# print(A.get_sample_mean_srswor(), A.get_sample_variance_srswor())
 
 
-########B) Clusters selected  by simplerandom samplign without replacement
+
+A = CalculationsDetails()
+A.total_secondary_units = len(data)
+A.sample_primary_units = n_psu_samples
+A.total_primary_units = N_clusters
+
+for cluster in selected_clusters:
+    A.children[cluster] = CalculationsDetails()
+    A.children[cluster].total_secondary_units = len(clusters_to_datapoints[cluster])
+    A.children[cluster].sample_secondary_units = n_psu_samples
+    ssu_samples_per_cluster = np.random.choice(clusters_to_datapoints[cluster], size=n_ssu_samples, replace=False)
+    A.children[cluster].initialize_with_data_points(ssu_samples_per_cluster)
+
+plot_cluster_grid_highlight(data=data, plot_variable='cluster', highlight_clusters=selected_clusters, title='Soil Data Clustering (Strata)', selected_points=A.get_all_primary_units())
+print(A.get_sample_mean(), A.get_sample_variance())
+
+((A.children[11].get_sample_total()+A.children[15].get_sample_total())/2*20)/ data.shape[0]
+A.get_sample_mean_srswor()
+A.children[11].get_partial_si2_inside_sum()
+A.get_sample_variance_srswor()
+print(A.get_sample_mean_srswor(), A.get_sample_variance_srswor())
+
+
+#######B) Clusters selected  by simplerandom samplign without replacement
 selected_clusters_simple = np.random.choice(unique_clusters, size=n_psu_samples, replace=False)
 plot_cluster_grid_highlight(data=data, plot_variable='cluster', highlight_clusters=selected_clusters_simple, title='Soil Data Clustering (Strata)', )
 
@@ -167,51 +181,10 @@ print(B.get_sample_mean_srswor(), B.get_sample_variance_srswor())
 
 plot_cluster_grid_highlight(data=data, plot_variable='cluster', highlight_clusters=selected_clusters_simple, title='Soil Data Clustering (Strata)', selected_points=B.get_all_primary_units() )
 
-
-B_calculations = {}
-for cluster, samples in ssu_samples_simple.items():
-    sample_cluster_observations = data.loc[samples, 'Cu']
-    B_calculations[cluster] = {"total_cluster_size": len(clusters_to_datapoints[cluster]), "sample_cluster_size": len(samples), "sample_total": sample_cluster_observations.mean() * len(clusters_to_datapoints[cluster]), "sample_mean": sample_cluster_observations.mean(), "sample_variance": sample_cluster_observations.var(ddof=1)}
-
-
-
-
-B_total = (N_clusters/ n_psu_samples) * sum(x["sample_total"] for x  in B_calculations.values())
-B_mean = B_total/data.shape[0]
-
-
-
-def var_B(N_clusters, n_psu_samples, B_calculations, B_mean, ssu_samples_simple):
-    s_u2 = (
-        1
-        / (n_psu_samples - 1)
-        * sum((x["sample_total"] - B_mean) ** 2 for x in B_calculations.values())
-        #TODO: Opravdu tady ma byt sample total??
-    )
-
-    first_part = N_clusters*(N_clusters - n_psu_samples) * s_u2/ n_psu_samples
-    second_part = N_clusters/n_psu_samples *sum(y_func(B_calculations[cluster], sample_cluster_observations) for (cluster, samples) in ssu_samples_simple.items())
-    return first_part + second_part
-
-def y_func(B_calculation, sample_cluster_observations):
-    Mi = B_calculation["total_cluster_size"]
-    mi = B_calculation["sample_cluster_size"]
-    s_i2 = s_i2_calculation(B_calculation, sample_cluster_observations)
-    return Mi*(Mi-mi) * s_i2 / mi
-
-def s_i2_calculation(B_calculation, sample_cluster_observations):
-    mi = B_calculation["total_cluster_size"]
-    yi_hat = B_calculation["sample_mean"]
-    return (1/(mi-1)) * sum([(x-yi_hat)**2 for x in sample_cluster_observations])
-
-B_total_variance_book = var_B(N_clusters, n_psu_samples, B_calculations, B_mean, ssu_samples_simple)
-B_mean_variance_book = B_total_variance_book/ (data.shape[0]**2)
-B_mean_standard_error_book = np.sqrt(B_mean_variance_book)
-
 # C) cluster selected by stratified cluster random sampling
 
 n_clusters_per_stratum = 2
-n_ssu_samples = 2
+n_ssu_samples = 5
 selected_clusters_stratum = {}
 
 for stratum in strata:
@@ -226,45 +199,64 @@ ssu_samples_stratified_plot = [item for sublist in selected_clusters_stratum.val
 selected_clusters = [item for sublist in selected_clusters_stratum.values() for item in sublist.keys()]
 plot_stratum_grid_highlight(data=data, highlight_clusters=selected_clusters,title='Soil Data Clustering (Strata)', selected_points=ssu_samples_stratified_plot)
 
-C_calculations = {}
-for stratum, stratum_clusters in selected_clusters_stratum.items():
-    C_calculations[stratum] = {}
-    C_calculations[stratum]["total_stratum_size"] = sum(len(clusters_to_datapoints[cluster]) for cluster in strata[stratum])
-    for cluster, samples in stratum_clusters.items():
-        sample_cluster_observations = data.loc[samples, 'Cu']
-        print(sample_cluster_observations)
-        C_calculations[stratum][cluster] = {
-            "total_cluster_size": len(clusters_to_datapoints[cluster]),
-            "sample_cluster_size": len(samples),
-            "sample_total": sum(sample_cluster_observations),
-            "sample_mean": sample_cluster_observations.mean(),
-            "sample_variance": sample_cluster_observations.var(ddof=1)
-        }
-    C_calculations[stratum]["sample_mean"] = (1/n_clusters_per_stratum) * sum(x["sample_mean"] for x in C_calculations[stratum].values() if isinstance(x, dict))
-
+C= CalculationsDetails()
+C.total_secondary_units = len(data)
+C.total_zeroth_units = N_strata
+C.sample_zeroth_units = n_clusters_per_stratum
 for stratum in strata:
-    N_clusters_strata = int(N_clusters/ N_strata)
-    C_calculations_stratum_clusters = {
-        k: v
-        for k, v in C_calculations[stratum].items()
-        if isinstance(k, (int, float, np.integer, np.floating))
-    }
-    C_calculations[stratum]["sample_variance"] = var_B(N_clusters_strata, n_clusters_per_stratum, C_calculations_stratum_clusters, C_calculations[stratum]["sample_mean"], selected_clusters_stratum[stratum])
+    C.children[stratum] = CalculationsDetails()
+    C.children[stratum].total_primary_units = len(strata[stratum])
+    C.children[stratum].sample_primary_units = n_clusters_per_stratum
+    C.children[stratum].total_secondary_units = sum(len(clusters_to_datapoints[cluster]) for cluster in strata[stratum])
+    C.children[stratum].sample_secondary_units = n_ssu_samples * n_clusters_per_stratum
+    for cluster, samples in selected_clusters_stratum[stratum].items():
+        C.children[stratum].children[cluster] = CalculationsDetails()
+        C.children[stratum].children[cluster].total_secondary_units = len(clusters_to_datapoints[cluster])
+        C.children[stratum].children[cluster].sample_secondary_units = len(samples)
+        C.children[stratum].children[cluster].initialize_with_data_points(samples)
+
+print(C.get_sample_mean_stratified(), C.get_sample_mean_variance_stratified())
 
 
-sum = 0
-for stratum in C_calculations:
-    strata_variance = C_calculations[stratum]["sample_variance"]
-    total_stratum_size = C_calculations[stratum]["total_stratum_size"]
-    sample_stratum_size = n_clusters_per_stratum * n_ssu_samples
-    sum += total_stratum_size * (total_stratum_size - sample_stratum_size) * strata_variance / sample_stratum_size
-
-
-C_mean = (1/N_strata) * np.sum([x["sample_mean"] for x in C_calculations.values()])
-C_total = (data.shape[0]) * C_mean
-C_total_variance = sum
-C_mean_variance = C_total_variance / (data.shape[0]**2)
-C_mean_standard_error = np.sqrt(C_mean_variance)
+# C_calculations = {}
+# for stratum, stratum_clusters in selected_clusters_stratum.items():
+#     C_calculations[stratum] = {}
+#     C_calculations[stratum]["total_stratum_size"] = sum(len(clusters_to_datapoints[cluster]) for cluster in strata[stratum])
+#     for cluster, samples in stratum_clusters.items():
+#         sample_cluster_observations = data.loc[samples, 'Cu']
+#         print(sample_cluster_observations)
+#         C_calculations[stratum][cluster] = {
+#             "total_cluster_size": len(clusters_to_datapoints[cluster]),
+#             "sample_cluster_size": len(samples),
+#             "sample_total": sum(sample_cluster_observations),
+#             "sample_mean": sample_cluster_observations.mean(),
+#             "sample_variance": sample_cluster_observations.var(ddof=1)
+#         }
+#     C_calculations[stratum]["sample_mean"] = (1/n_clusters_per_stratum) * sum(x["sample_mean"] for x in C_calculations[stratum].values() if isinstance(x, dict))
+#
+# for stratum in strata:
+#     N_clusters_strata = int(N_clusters/ N_strata)
+#     C_calculations_stratum_clusters = {
+#         k: v
+#         for k, v in C_calculations[stratum].items()
+#         if isinstance(k, (int, float, np.integer, np.floating))
+#     }
+#     C_calculations[stratum]["sample_variance"] = var_B(N_clusters_strata, n_clusters_per_stratum, C_calculations_stratum_clusters, C_calculations[stratum]["sample_mean"], selected_clusters_stratum[stratum])
+#
+#
+# sum = 0
+# for stratum in C_calculations:
+#     strata_variance = C_calculations[stratum]["sample_variance"]
+#     total_stratum_size = C_calculations[stratum]["total_stratum_size"]
+#     sample_stratum_size = n_clusters_per_stratum * n_ssu_samples
+#     sum += total_stratum_size * (total_stratum_size - sample_stratum_size) * strata_variance / sample_stratum_size
+#
+#
+# C_mean = (1/N_strata) * np.sum([x["sample_mean"] for x in C_calculations.values()])
+# C_total = (data.shape[0]) * C_mean
+# C_total_variance = sum
+# C_mean_variance = C_total_variance / (data.shape[0]**2)
+# C_mean_standard_error = np.sqrt(C_mean_variance)
 
 
 
@@ -273,7 +265,7 @@ C_mean_standard_error = np.sqrt(C_mean_variance)
 
 
 ######### D) Simple random sampling of population units, without replacement
-D_n_samples = 4
+D_n_samples = 50
 simple_samples = np.random.choice(a = data.index, size=D_n_samples, replace=False)
 plot_cluster_grid_highlight(data=data, plot_variable='cluster', highlight_clusters=None, title='Soil Data Clustering (Strata)', selected_points=simple_samples)
 
