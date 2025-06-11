@@ -73,7 +73,7 @@ def plot_cluster_grid_highlight(
     unique_codes = np.unique(img[~np.isnan(img)]).astype(int)
     legend_labels = [str(code) for code in unique_codes]
 
-    # Only highlight clusters if highlight_clusters is not None
+    # Only highlight clusters_to_datapoints if highlight_clusters is not None
     if highlight_clusters is not None:
         highlight_set = set(highlight_clusters)
     else:
@@ -225,7 +225,7 @@ if __name__ == "__main__":
     np.random.seed(1)
     x = np.tile(np.arange(6), 6)
     y = np.repeat(np.arange(6), 6)
-    cluster = (x + y) % 4  # 4 clusters
+    cluster = (x + y) % 4  # 4 clusters_to_datapoints
 
     toy_data = pd.DataFrame({'x': x, 'y': y, 'cluster': cluster})
 
@@ -236,14 +236,14 @@ if __name__ == "__main__":
     import pandas as pd
     from plot_cluster import plot_cluster_grid_highlight
 
-    # Create toy data: 6x6 grid, 4 clusters
+    # Create toy data: 6x6 grid, 4 clusters_to_datapoints
     x = np.tile(np.arange(6), 6)
     y = np.repeat(np.arange(6), 6)
-    cluster = (x + y) % 4  # 4 clusters
+    cluster = (x + y) % 4  # 4 clusters_to_datapoints
 
     toy_data = pd.DataFrame({"x": x, "y": y, "cluster": cluster})
 
-    # Randomly select clusters to highlight
+    # Randomly select clusters_to_datapoints to highlight
     np.random.seed(42)
     highlight_clusters = np.random.choice([0, 1, 2, 3], size=2, replace=False)
 
