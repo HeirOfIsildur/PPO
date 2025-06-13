@@ -2,8 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 from matplotlib.patches import Patch
+import seaborn as sns
 
-def plot_cluster_grid(data, plot_variable, title):
+def plot_cluster_grid(data, plot_variable, title, save_path=None):
     pivot = data.pivot(index='y', columns='x', values=plot_variable)
     img = pivot.values
 
@@ -50,11 +51,13 @@ def plot_cluster_grid(data, plot_variable, title):
     ax.set_title(title, pad=20)
     plt.tight_layout()
     plt.subplots_adjust(top=0.88)
+    if save_path:
+        plt.savefig(save_path)
     plt.show()
 
 
 def plot_cluster_grid_highlight(
-    data, plot_variable, highlight_clusters, title, selected_points=None
+    data, plot_variable, highlight_clusters, title, selected_points=None, save_path=None
 ):
     import matplotlib.colors as mcolors
 
@@ -136,6 +139,8 @@ def plot_cluster_grid_highlight(
     ax.set_title(title, pad=20)
     plt.tight_layout()
     plt.subplots_adjust(top=0.88)
+    if save_path:
+        plt.savefig(save_path)
     plt.show()
 
 
@@ -216,9 +221,24 @@ def plot_stratum_grid_highlight(
     ax.set_title(title, pad=20)
     plt.tight_layout()
     plt.subplots_adjust(top=0.88)
+    if save_path:
+        plt.savefig(save_path)
     plt.show()
 
-
+def plot_heatmap(data, variable_to_plot='Cu', save_path=None):
+    """
+    Plots a heatmap of Cu values with x and y as axes.
+    """
+    heatmap_data = data.pivot_table(index='y', columns='x', values=variable_to_plot)
+    plt.figure(figsize=(10, 8))
+    sns.heatmap(heatmap_data, cmap='viridis', cbar_kws={'label': 'Cu'})
+    plt.title('Heatmap of Cu')
+    plt.xlabel('Easting')
+    plt.ylabel('Northing')
+    plt.tight_layout()
+    if save_path:
+        plt.savefig(save_path)
+    plt.show()
 
 if __name__ == "__main__":
     # Create toy data
@@ -254,3 +274,4 @@ if __name__ == "__main__":
         highlight_clusters=highlight_clusters,
         title="Toy Cluster Grid with Highlighted Clusters",
     )
+

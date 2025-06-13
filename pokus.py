@@ -4,14 +4,15 @@ import pandas as pd
 from sklearn.cluster import KMeans
 
 from plot_cluster import (
+    plot_heatmap,
     plot_cluster_grid,
     plot_cluster_grid_highlight,
     plot_stratum_grid_highlight,
 )
 
 #Constants
-seed = 1998 #my UKČO
-percentage_white_pixels = 0.05  # 5% of white pixels
+seed = 45613947 #my UKČO
+percentage_white_pixels = 0  # 5% of white pixels
 N_clusters = 20
 N_strata = 5
 random.seed(seed)
@@ -22,6 +23,7 @@ data = pd.read_csv("soildata.csv", sep=";")
 # data = data[["x", "y", "Cu"]]
 data = data.replace(',', '', regex=True)
 data = data.apply(lambda col: col.astype(int))
+plot_heatmap(data, variable_to_plot='Cu', save_path='img/cu_heatmap.pdf')
 True_total = data["Cu"].sum()
 True_mean = data["Cu"].mean()
 # Remove 5% of the rows at random (white pixels, we act like there are not existing at all so number of PSUs doesn't include white pixels)
@@ -30,8 +32,8 @@ data = data.sample(frac=1-percentage_white_pixels, random_state=seed).reset_inde
 #Creation of clusters_to_datapoints
 kmeans = KMeans(n_clusters=N_clusters, random_state=seed)
 # data['cluster'] = kmeans.fit_predict(data[['x', 'y', 'Al', 'B', 'Ca', 'Fe', 'K', 'Mg', 'Mn/', 'P', 'Zn', 'N','N(min)', 'pH']])
-data['cluster'] = kmeans.fit_predict(data[['x', 'y', 'Al', 'B', 'Ca', 'Fe', 'K', 'Mg', 'Mn', 'P', 'Zn', 'N','N(min)', 'pH']])
-plot_cluster_grid(data = data, plot_variable='cluster', title='Soil Data Clustering')
+data['cluster'] = kmeans.fit_predict(data[['x', 'y']])
+plot_cluster_grid(data = data, plot_variable='cluster', title='Soil Data Clustering', save_path='img/clusters_A.pdf')
 clusters_to_datapoints = data.groupby('cluster').apply(lambda df: df.index.tolist()).to_dict()
 unique_clusters = list(data['cluster'].unique())
 
@@ -45,7 +47,7 @@ for i, cluster in enumerate(unique_clusters):
     clusters_to_stratum[cluster] = stratum
 
 data['stratum'] = data['cluster'].map(clusters_to_stratum)
-plot_cluster_grid(data=data, plot_variable='stratum', title='Soil Data Clustering (Strata)')
+plot_cluster_grid(data=data, plot_variable='stratum', title='Soil Data Strata', save_path='img/simple_strata.pdf')
 
 strata = {}
 for cluster, stratum in clusters_to_stratum.items():
@@ -55,11 +57,11 @@ for cluster, stratum in clusters_to_stratum.items():
 # # A) Clusters selected with probabilities proportional to size, with replacement
 events = np.arange(N_clusters)
 probabilities = data['cluster'].value_counts(normalize=True).sort_index().values
-n_psu_samples = 5
+n_psu_samples = 6
 n_ssu_samples = 5
 n_clusters_per_stratum = 2
 selected_clusters = np.random.choice(events, size=n_psu_samples, replace=False, p=probabilities)
-plot_cluster_grid_highlight(data=data, plot_variable='cluster', highlight_clusters=selected_clusters, title='Soil Data Clustering (Strata)', )
+plot_cluster_grid_highlight(data=data, plot_variable='cluster', highlight_clusters=selected_clusters, title='Soil Data Clustering (Strata)', save_path="img/selected_clusters.pdf")
 
 class CalculationsDetails():
     def __init__(self, total_secondary_units: int|None = None, sample_secondary_units: int|None = None, total_primary_units: int|None = None, sample_primary_units: int|None = None, total_zeroth_units: int|None = None, sample_zeroth_units: int|None = None):
@@ -140,13 +142,6 @@ class CalculationsDetails():
     def get_sample_mean_variance_stratified(self):
         return self.get_sample_total_variance_stratified() / (self.total_secondary_units**2)
 
-
-
-
-
-
-
-
 A = CalculationsDetails(total_secondary_units=len(data), sample_primary_units=n_psu_samples, total_primary_units=N_clusters)
 
 for i, cluster in enumerate(selected_clusters):
@@ -155,7 +150,7 @@ for i, cluster in enumerate(selected_clusters):
     ssu_samples_per_cluster = np.random.choice(clusters_to_datapoints[cluster], size=n_ssu_samples, replace=False)
     A.children[cluster_underscore].initialize_with_data_points(ssu_samples_per_cluster)
 
-plot_cluster_grid_highlight(data=data, plot_variable='cluster', highlight_clusters=selected_clusters, title='Soil Data Clustering (Strata)', selected_points=A.get_all_primary_units())
+plot_cluster_grid_highlight(data=data, plot_variable='cluster', highlight_clusters=selected_clusters, title='Soil Data Clustering (Strata)', selected_points=A.get_all_primary_units(), save_path='img/selected_points_A.pdf')
 print(A.get_sample_mean(), A.get_sample_variance())
 
 #######B) Clusters selected  by simplerandom samplign without replacement
