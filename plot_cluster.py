@@ -145,7 +145,7 @@ def plot_cluster_grid_highlight(
 
 
 def plot_stratum_grid_highlight(
-    data, highlight_clusters, title, selected_points=None
+    data, highlight_clusters, title, selected_points=None, save_path=None
 ):
     import matplotlib.pyplot as plt
     import numpy as np
